@@ -14,10 +14,12 @@ From the project root:
 
 ```powershell
 python -m src.run_data_audit
+python -m src.run_eda_summary
 python -m src.train_baseline
 ```
 
 ## What These Scripts Do
 
 - `run_data_audit.py`: checks schema, prints target balance, and saves missing-value summary
-- `train_baseline.py`: builds a first logistic regression baseline with engineered features and reports fold AUC
+- `run_eda_summary.py`: creates CSV summaries for missing values, numeric columns, category target rates, and engineered feature correlations
+- `train_baseline.py`: compares a logistic baseline and a CatBoost baseline and reports fold AUC

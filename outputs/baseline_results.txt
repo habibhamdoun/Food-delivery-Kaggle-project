@@ -1,0 +1,16 @@
+Logistic baseline
+  Fold 1: 0.93141
+  Fold 2: 0.92906
+  Fold 3: 0.93482
+  Fold 4: 0.93344
+  Fold 5: 0.93269
+  Mean ROC-AUC: 0.93228
+
+CatBoost baseline
+  Fold 1: 0.96950
+  Fold 2: 0.97086
+  Fold 3: 0.97053
+  Fold 4: 0.97062
+  Fold 5: 0.97198
+  Mean ROC-AUC: 0.97070
+
