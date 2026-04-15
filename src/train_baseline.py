@@ -2,7 +2,11 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.baseline import evaluate_catboost_baseline, evaluate_logistic_baseline
+from src.baseline import (
+    evaluate_catboost_baseline,
+    evaluate_lightgbm_baseline,
+    evaluate_logistic_baseline,
+)
 from src.config import OUTPUTS_DIR
 from src.data_utils import load_train_data
 
@@ -25,10 +29,14 @@ def main() -> None:
     catboost_result = evaluate_catboost_baseline(train_df)
     print_result("CatBoost baseline", catboost_result.fold_scores, catboost_result.mean_auc)
 
+    lightgbm_result = evaluate_lightgbm_baseline(train_df)
+    print_result("LightGBM baseline", lightgbm_result.fold_scores, lightgbm_result.mean_auc)
+
     rows: list[dict[str, float | int | str]] = []
     for model_name, result in [
         ("Logistic baseline", logistic_result),
         ("CatBoost baseline", catboost_result),
+        ("LightGBM baseline", lightgbm_result),
     ]:
         for fold_idx, score in enumerate(result.fold_scores, start=1):
             rows.append(
@@ -49,6 +57,7 @@ def main() -> None:
         for model_name, result in [
             ("Logistic baseline", logistic_result),
             ("CatBoost baseline", catboost_result),
+            ("LightGBM baseline", lightgbm_result),
         ]:
             handle.write(f"{model_name}\n")
             for fold_idx, score in enumerate(result.fold_scores, start=1):

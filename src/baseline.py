@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 import pandas as pd
 from catboost import CatBoostClassifier
+from lightgbm import LGBMClassifier
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LogisticRegression
@@ -32,6 +33,35 @@ def _normalize_for_catboost(X: pd.DataFrame) -> pd.DataFrame:
         if pd.api.types.is_bool_dtype(frame[col]):
             frame[col] = frame[col].astype(float)
     return frame
+
+
+def _prepare_tree_frame(
+    X: pd.DataFrame,
+    reference_frame: pd.DataFrame | None = None,
+) -> tuple[pd.DataFrame, list[str]]:
+    frame = X.copy()
+
+    for col in frame.columns:
+        if pd.api.types.is_bool_dtype(frame[col]):
+            frame[col] = frame[col].astype(float)
+
+    categorical_columns = frame.select_dtypes(exclude=["number"]).columns.tolist()
+    numeric_columns = [col for col in frame.columns if col not in categorical_columns]
+
+    for col in categorical_columns:
+        frame[col] = frame[col].fillna("missing").astype("category")
+        if reference_frame is not None:
+            categories = reference_frame[col].cat.categories
+            frame[col] = pd.Categorical(frame[col], categories=categories)
+
+    for col in numeric_columns:
+        if reference_frame is None:
+            fill_value = frame[col].median()
+        else:
+            fill_value = reference_frame[col].median()
+        frame[col] = frame[col].fillna(fill_value)
+
+    return frame, categorical_columns
 
 
 def build_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
@@ -70,6 +100,17 @@ def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
         X[ID_COLUMN] = X[ID_COLUMN].astype(str)
 
     return X, y
+
+
+def prepare_inference_data(df: pd.DataFrame) -> pd.DataFrame:
+    frame = build_features(df)
+    if TARGET_COLUMN in frame.columns:
+        frame = frame.drop(columns=[TARGET_COLUMN])
+
+    if ID_COLUMN in frame.columns:
+        frame[ID_COLUMN] = frame[ID_COLUMN].astype(str)
+
+    return frame
 
 
 def evaluate_logistic_baseline(
@@ -152,3 +193,124 @@ def evaluate_catboost_baseline(
         fold_scores.append(roc_auc_score(y_valid, valid_proba))
 
     return BaselineResult(fold_scores=fold_scores)
+
+
+def evaluate_lightgbm_baseline(
+    train_df: pd.DataFrame,
+    n_splits: int = 5,
+    random_state: int = 42,
+) -> BaselineResult:
+    X, y = prepare_training_data(train_df)
+    X, categorical_columns = _prepare_tree_frame(X)
+
+    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
+    fold_scores: list[float] = []
+
+    for train_idx, valid_idx in cv.split(X, y):
+        X_train = X.iloc[train_idx].copy()
+        X_valid = X.iloc[valid_idx].copy()
+        y_train = y.iloc[train_idx]
+        y_valid = y.iloc[valid_idx]
+
+        X_train, categorical_columns = _prepare_tree_frame(X_train)
+        X_valid, _ = _prepare_tree_frame(X_valid, reference_frame=X_train)
+
+        model = LGBMClassifier(
+            objective="binary",
+            n_estimators=500,
+            learning_rate=0.05,
+            num_leaves=31,
+            subsample=0.8,
+            colsample_bytree=0.8,
+            random_state=random_state,
+            verbose=-1,
+        )
+        model.fit(X_train, y_train, categorical_feature=categorical_columns)
+        valid_proba = model.predict_proba(X_valid)[:, 1]
+        fold_scores.append(roc_auc_score(y_valid, valid_proba))
+
+    return BaselineResult(fold_scores=fold_scores)
+
+
+def fit_catboost_model(
+    train_df: pd.DataFrame,
+    random_state: int = 42,
+) -> tuple[CatBoostClassifier, pd.DataFrame, list[str]]:
+    X, y = prepare_training_data(train_df)
+    X = _normalize_for_catboost(X)
+
+    categorical_columns = X.select_dtypes(exclude=["number"]).columns.tolist()
+    categorical_indices = [X.columns.get_loc(col) for col in categorical_columns]
+
+    for col in categorical_columns:
+        X[col] = X[col].fillna("missing").astype(str)
+
+    numeric_columns = [col for col in X.columns if col not in categorical_columns]
+    for col in numeric_columns:
+        X[col] = X[col].fillna(X[col].median())
+
+    model = CatBoostClassifier(
+        loss_function="Logloss",
+        eval_metric="AUC",
+        iterations=400,
+        learning_rate=0.05,
+        depth=6,
+        random_seed=random_state,
+        verbose=False,
+    )
+    model.fit(X, y, cat_features=categorical_indices)
+    return model, X, categorical_columns
+
+
+def predict_with_catboost(
+    model: CatBoostClassifier,
+    test_df: pd.DataFrame,
+    train_feature_frame: pd.DataFrame,
+    categorical_columns: list[str],
+) -> np.ndarray:
+    X_test = prepare_inference_data(test_df)
+    X_test = _normalize_for_catboost(X_test)
+    X_test = X_test.reindex(columns=train_feature_frame.columns)
+
+    for col in categorical_columns:
+        X_test[col] = X_test[col].fillna("missing").astype(str)
+
+    numeric_columns = [col for col in X_test.columns if col not in categorical_columns]
+    for col in numeric_columns:
+        median = train_feature_frame[col].median()
+        X_test[col] = X_test[col].fillna(median)
+
+    return model.predict_proba(X_test)[:, 1]
+
+
+def fit_lightgbm_model(
+    train_df: pd.DataFrame,
+    random_state: int = 42,
+) -> tuple[LGBMClassifier, pd.DataFrame, list[str]]:
+    X, y = prepare_training_data(train_df)
+    X, categorical_columns = _prepare_tree_frame(X)
+
+    model = LGBMClassifier(
+        objective="binary",
+        n_estimators=500,
+        learning_rate=0.05,
+        num_leaves=31,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        random_state=random_state,
+        verbose=-1,
+    )
+    model.fit(X, y, categorical_feature=categorical_columns)
+    return model, X, categorical_columns
+
+
+def predict_with_lightgbm(
+    model: LGBMClassifier,
+    test_df: pd.DataFrame,
+    train_feature_frame: pd.DataFrame,
+    categorical_columns: list[str],
+) -> np.ndarray:
+    X_test = prepare_inference_data(test_df)
+    X_test = X_test.reindex(columns=train_feature_frame.columns)
+    X_test, _ = _prepare_tree_frame(X_test, reference_frame=train_feature_frame)
+    return model.predict_proba(X_test)[:, 1]
