@@ -148,6 +148,7 @@ def evaluate_catboost_baseline(
     train_df: pd.DataFrame,
     n_splits: int = 5,
     random_state: int = 42,
+    model_params: dict | None = None,
 ) -> BaselineResult:
     X, y = prepare_training_data(train_df)
     X = _normalize_for_catboost(X)
@@ -174,14 +175,20 @@ def evaluate_catboost_baseline(
             X_train[col] = X_train[col].fillna(median)
             X_valid[col] = X_valid[col].fillna(median)
 
+        params = {
+            "loss_function": "Logloss",
+            "eval_metric": "AUC",
+            "iterations": 400,
+            "learning_rate": 0.05,
+            "depth": 6,
+            "random_seed": random_state,
+            "verbose": False,
+        }
+        if model_params:
+            params.update(model_params)
+
         model = CatBoostClassifier(
-            loss_function="Logloss",
-            eval_metric="AUC",
-            iterations=400,
-            learning_rate=0.05,
-            depth=6,
-            random_seed=random_state,
-            verbose=False,
+            **params,
         )
 
         model.fit(
@@ -199,6 +206,7 @@ def evaluate_lightgbm_baseline(
     train_df: pd.DataFrame,
     n_splits: int = 5,
     random_state: int = 42,
+    model_params: dict | None = None,
 ) -> BaselineResult:
     X, y = prepare_training_data(train_df)
     X, categorical_columns = _prepare_tree_frame(X)
@@ -215,16 +223,20 @@ def evaluate_lightgbm_baseline(
         X_train, categorical_columns = _prepare_tree_frame(X_train)
         X_valid, _ = _prepare_tree_frame(X_valid, reference_frame=X_train)
 
-        model = LGBMClassifier(
-            objective="binary",
-            n_estimators=500,
-            learning_rate=0.05,
-            num_leaves=31,
-            subsample=0.8,
-            colsample_bytree=0.8,
-            random_state=random_state,
-            verbose=-1,
-        )
+        params = {
+            "objective": "binary",
+            "n_estimators": 500,
+            "learning_rate": 0.05,
+            "num_leaves": 31,
+            "subsample": 0.8,
+            "colsample_bytree": 0.8,
+            "random_state": random_state,
+            "verbose": -1,
+        }
+        if model_params:
+            params.update(model_params)
+
+        model = LGBMClassifier(**params)
         model.fit(X_train, y_train, categorical_feature=categorical_columns)
         valid_proba = model.predict_proba(X_valid)[:, 1]
         fold_scores.append(roc_auc_score(y_valid, valid_proba))
@@ -235,6 +247,7 @@ def evaluate_lightgbm_baseline(
 def fit_catboost_model(
     train_df: pd.DataFrame,
     random_state: int = 42,
+    model_params: dict | None = None,
 ) -> tuple[CatBoostClassifier, pd.DataFrame, list[str]]:
     X, y = prepare_training_data(train_df)
     X = _normalize_for_catboost(X)
@@ -249,15 +262,19 @@ def fit_catboost_model(
     for col in numeric_columns:
         X[col] = X[col].fillna(X[col].median())
 
-    model = CatBoostClassifier(
-        loss_function="Logloss",
-        eval_metric="AUC",
-        iterations=400,
-        learning_rate=0.05,
-        depth=6,
-        random_seed=random_state,
-        verbose=False,
-    )
+    params = {
+        "loss_function": "Logloss",
+        "eval_metric": "AUC",
+        "iterations": 400,
+        "learning_rate": 0.05,
+        "depth": 6,
+        "random_seed": random_state,
+        "verbose": False,
+    }
+    if model_params:
+        params.update(model_params)
+
+    model = CatBoostClassifier(**params)
     model.fit(X, y, cat_features=categorical_indices)
     return model, X, categorical_columns
 
@@ -286,20 +303,25 @@ def predict_with_catboost(
 def fit_lightgbm_model(
     train_df: pd.DataFrame,
     random_state: int = 42,
+    model_params: dict | None = None,
 ) -> tuple[LGBMClassifier, pd.DataFrame, list[str]]:
     X, y = prepare_training_data(train_df)
     X, categorical_columns = _prepare_tree_frame(X)
 
-    model = LGBMClassifier(
-        objective="binary",
-        n_estimators=500,
-        learning_rate=0.05,
-        num_leaves=31,
-        subsample=0.8,
-        colsample_bytree=0.8,
-        random_state=random_state,
-        verbose=-1,
-    )
+    params = {
+        "objective": "binary",
+        "n_estimators": 500,
+        "learning_rate": 0.05,
+        "num_leaves": 31,
+        "subsample": 0.8,
+        "colsample_bytree": 0.8,
+        "random_state": random_state,
+        "verbose": -1,
+    }
+    if model_params:
+        params.update(model_params)
+
+    model = LGBMClassifier(**params)
     model.fit(X, y, categorical_feature=categorical_columns)
     return model, X, categorical_columns
 
