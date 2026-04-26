@@ -97,6 +97,9 @@ Briefly document:
 - 50/50 blend public score
 - weighted blend attempts
 - failed feature-refresh and tuned-LightGBM attempts
+- target-encoded LightGBM improvement
+- weighted target-encoding blend improvement
+- final top-two target-encoding blend improvement
 
 This section is important because it shows real decision-making, not just local metrics.
 
@@ -104,9 +107,9 @@ This section is important because it shows real decision-making, not just local 
 
 State clearly:
 
-- The final chosen method was the 50/50 CatBoost + LightGBM blend
-- It achieved the best public leaderboard score of `0.97196`
-- It outperformed both single models and later riskier variations
+- The final chosen method was the final rank-average blend of the two top target-encoding winners
+- It achieved the best public leaderboard score of `0.97261`
+- It outperformed both single models and all earlier blend variants
 
 ## 11. Submission Generation
 

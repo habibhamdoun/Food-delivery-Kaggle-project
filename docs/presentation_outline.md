@@ -74,15 +74,18 @@ Use a small timeline:
 - Other weighted blends: slightly worse
 - Feature-refresh blend: worse on Kaggle
 - Tuned LightGBM: failed badly on Kaggle
+- Target-encoded LightGBM: `0.97257`
+- Weighted target-encoding blend: `0.97260`
+- Final top-two target-encoding rank blend: `0.97261`
 
 ## Slide 10: Final Model
 
-- Final choice: 50/50 CatBoost + LightGBM blend
-- Best public score: `0.97196`
+- Final choice: final rank-average blend of the two top target-encoding winners
+- Best public score: `0.97261`
 - Why chosen:
   - best leaderboard result
   - stronger than individual models
-  - more reliable than later risky experiments
+  - stronger than earlier ensemble variants
 
 ## Slide 11: What We Learned
 

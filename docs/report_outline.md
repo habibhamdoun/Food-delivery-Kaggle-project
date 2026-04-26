@@ -127,10 +127,13 @@ Summarize the actual leaderboard progression:
 - 40/60 and 55/45 weighted blends were slightly worse
 - Refreshed feature blend scored `0.97184`
 - Tuned LightGBM failed badly on Kaggle with `0.91710`
+- Target-encoded LightGBM improved to `0.97257`
+- Weighted blend with target-encoded LightGBM improved to `0.97260`
+- Final top-two target-encoding rank blend reached `0.97261`
 
 Main conclusion:
 
-- The best public result came from the simple 50/50 blend, not from the later more aggressive experiments
+- The best public result ultimately came from a late-stage rank-blend of the two strongest target-encoding winners
 
 Reference:
 
@@ -140,14 +143,14 @@ Reference:
 
 State clearly:
 
-- Final chosen method: 50/50 blend of CatBoost and LightGBM probability predictions
-- Best public score: `0.97196`
-- Best file: [blend_catboost_lightgbm_20260415_004218.csv](C:\Users\habib\Desktop\ML%20project\coe546-food-delivery\submissions\blend_catboost_lightgbm_20260415_004218.csv)
+- Final chosen method: final rank-average blend of the two top-performing target-encoding blend winners
+- Best public score: `0.97261`
+- Best file: [rank_blend_cb_0.50_lgbm_0.50_20260426_042932.csv](C:\Users\habib\Desktop\ML%20project\coe546-food-delivery\submissions\rank_blend_cb_0.50_lgbm_0.50_20260426_042932.csv)
 
 Explain why it was chosen:
 
-- It outperformed each single model
-- It was more reliable than later risky experiments
+- It outperformed each earlier single model
+- It outperformed the earlier ensemble family
 - It achieved the strongest leaderboard performance among all tested submissions
 
 ## 10. Discussion

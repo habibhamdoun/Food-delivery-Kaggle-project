@@ -90,8 +90,11 @@ def build_preprocessor(X: pd.DataFrame) -> ColumnTransformer:
     )
 
 
-def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
-    frame = build_features(df)
+def prepare_training_data(
+    df: pd.DataFrame,
+    feature_builder=build_features,
+) -> tuple[pd.DataFrame, pd.Series]:
+    frame = feature_builder(df)
     y = frame[TARGET_COLUMN].astype(int)
     feature_columns = [col for col in frame.columns if col != TARGET_COLUMN]
     X = frame[feature_columns].copy()
@@ -102,8 +105,11 @@ def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     return X, y
 
 
-def prepare_inference_data(df: pd.DataFrame) -> pd.DataFrame:
-    frame = build_features(df)
+def prepare_inference_data(
+    df: pd.DataFrame,
+    feature_builder=build_features,
+) -> pd.DataFrame:
+    frame = feature_builder(df)
     if TARGET_COLUMN in frame.columns:
         frame = frame.drop(columns=[TARGET_COLUMN])
 
@@ -117,8 +123,9 @@ def evaluate_logistic_baseline(
     train_df: pd.DataFrame,
     n_splits: int = 5,
     random_state: int = 42,
+    feature_builder=build_features,
 ) -> BaselineResult:
-    X, y = prepare_training_data(train_df)
+    X, y = prepare_training_data(train_df, feature_builder=feature_builder)
     preprocessor = build_preprocessor(X)
 
     model = Pipeline(
@@ -149,8 +156,9 @@ def evaluate_catboost_baseline(
     n_splits: int = 5,
     random_state: int = 42,
     model_params: dict | None = None,
+    feature_builder=build_features,
 ) -> BaselineResult:
-    X, y = prepare_training_data(train_df)
+    X, y = prepare_training_data(train_df, feature_builder=feature_builder)
     X = _normalize_for_catboost(X)
 
     categorical_columns = X.select_dtypes(exclude=["number"]).columns.tolist()
@@ -207,8 +215,9 @@ def evaluate_lightgbm_baseline(
     n_splits: int = 5,
     random_state: int = 42,
     model_params: dict | None = None,
+    feature_builder=build_features,
 ) -> BaselineResult:
-    X, y = prepare_training_data(train_df)
+    X, y = prepare_training_data(train_df, feature_builder=feature_builder)
     X, categorical_columns = _prepare_tree_frame(X)
 
     cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=random_state)
@@ -248,8 +257,9 @@ def fit_catboost_model(
     train_df: pd.DataFrame,
     random_state: int = 42,
     model_params: dict | None = None,
+    feature_builder=build_features,
 ) -> tuple[CatBoostClassifier, pd.DataFrame, list[str]]:
-    X, y = prepare_training_data(train_df)
+    X, y = prepare_training_data(train_df, feature_builder=feature_builder)
     X = _normalize_for_catboost(X)
 
     categorical_columns = X.select_dtypes(exclude=["number"]).columns.tolist()
@@ -284,8 +294,9 @@ def predict_with_catboost(
     test_df: pd.DataFrame,
     train_feature_frame: pd.DataFrame,
     categorical_columns: list[str],
+    feature_builder=build_features,
 ) -> np.ndarray:
-    X_test = prepare_inference_data(test_df)
+    X_test = prepare_inference_data(test_df, feature_builder=feature_builder)
     X_test = _normalize_for_catboost(X_test)
     X_test = X_test.reindex(columns=train_feature_frame.columns)
 
@@ -304,8 +315,9 @@ def fit_lightgbm_model(
     train_df: pd.DataFrame,
     random_state: int = 42,
     model_params: dict | None = None,
+    feature_builder=build_features,
 ) -> tuple[LGBMClassifier, pd.DataFrame, list[str]]:
-    X, y = prepare_training_data(train_df)
+    X, y = prepare_training_data(train_df, feature_builder=feature_builder)
     X, categorical_columns = _prepare_tree_frame(X)
 
     params = {
@@ -331,8 +343,9 @@ def predict_with_lightgbm(
     test_df: pd.DataFrame,
     train_feature_frame: pd.DataFrame,
     categorical_columns: list[str],
+    feature_builder=build_features,
 ) -> np.ndarray:
-    X_test = prepare_inference_data(test_df)
+    X_test = prepare_inference_data(test_df, feature_builder=feature_builder)
     X_test = X_test.reindex(columns=train_feature_frame.columns)
     X_test, _ = _prepare_tree_frame(X_test, reference_frame=train_feature_frame)
     return model.predict_proba(X_test)[:, 1]

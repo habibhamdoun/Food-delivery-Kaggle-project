@@ -19,7 +19,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--model",
-        choices=["catboost", "lightgbm", "lightgbm_tuned"],
+        choices=["catboost", "catboost_tuned", "lightgbm", "lightgbm_tuned"],
         default="catboost",
         help="Choose which trained model to use for submission generation.",
     )
@@ -38,6 +38,25 @@ def main() -> None:
     if args.model == "catboost":
         print("Training CatBoost on the full training set...")
         model, train_features, categorical_columns = fit_catboost_model(train_df)
+        test_predictions = predict_with_catboost(
+            model=model,
+            test_df=test_df,
+            train_feature_frame=train_features,
+            categorical_columns=categorical_columns,
+        )
+    elif args.model == "catboost_tuned":
+        print("Training tuned CatBoost on the full training set...")
+        tuned_params = {
+            "iterations": 700,
+            "learning_rate": 0.03,
+            "depth": 6,
+            "l2_leaf_reg": 7,
+            "random_strength": 1.5,
+        }
+        model, train_features, categorical_columns = fit_catboost_model(
+            train_df,
+            model_params=tuned_params,
+        )
         test_predictions = predict_with_catboost(
             model=model,
             test_df=test_df,

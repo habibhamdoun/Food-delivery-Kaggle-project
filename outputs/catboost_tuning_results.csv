@@ -1,0 +1,6 @@
+label,params_json,mean_roc_auc,fold_1,fold_2,fold_3
+catboost_depth7_light_reg,"{""depth"": 7, ""iterations"": 500, ""l2_leaf_reg"": 4, ""learning_rate"": 0.04, ""random_strength"": 1}",0.9708027356925046,0.9698841339609785,0.9705741172313983,0.9719499558851371
+catboost_baseline_reference,"{""depth"": 6, ""iterations"": 400, ""learning_rate"": 0.05}",0.9704582813798214,0.9695955157828873,0.9703320289340612,0.9714472994225155
+catboost_depth6_regularized,"{""depth"": 6, ""iterations"": 700, ""l2_leaf_reg"": 7, ""learning_rate"": 0.03, ""random_strength"": 1.5}",0.9704288133582066,0.9696797799003283,0.970086431039035,0.9715202291352565
+catboost_depth6_stable,"{""depth"": 6, ""iterations"": 550, ""l2_leaf_reg"": 9, ""learning_rate"": 0.04, ""random_strength"": 2}",0.9703428771717317,0.9695655172014154,0.9701364364938803,0.9713266778198997
+catboost_depth5_regularized,"{""depth"": 5, ""iterations"": 700, ""l2_leaf_reg"": 5, ""learning_rate"": 0.03, ""random_strength"": 1}",0.9700314279271275,0.9693422435398574,0.9696176851318373,0.9711343551096877
